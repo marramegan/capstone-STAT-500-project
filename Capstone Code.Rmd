@@ -1,0 +1,243 @@
+---
+title: "Capstone Code"
+output: html_document
+date: "2023-07-14"
+---
+
+```{r}
+# need to import the FireSafetyJournal data set
+
+canada_fires <- FireSafetyJournalData
+canada_fires <- canada_fires[, -5]
+canada_fires <- data.frame("CLASS"=canada_fires$CLASS, "NDVI"=canada_fires$NDVI, "LST"=canada_fires$LST, "BURNED_AREA"=canada_fires$BURNED_AREA)
+head(canada_fires)
+dim(canada_fires)
+
+canada_fires$CLASS <- as.factor(canada_fires$CLASS)
+nlevels(canada_fires$CLASS)
+table(canada_fires$CLASS)
+canada_fires$NDVI <- as.numeric(canada_fires$NDVI)
+canada_fires$LST <- as.numeric(canada_fires$LST)
+canada_fires$BURNED_AREA <- as.numeric(canada_fires$BURNED_AREA)
+
+str(canada_fires)
+
+FireSafetyJournalData <- data.frame("CLASS"=FireSafetyJournalData$CLASS, "NDVI"=FireSafetyJournalData$NDVI, "LST"=FireSafetyJournalData$LST, "BURNED_AREA"=FireSafetyJournalData$BURNED_AREA)
+head(FireSafetyJournalData)
+
+FireSafetyJournalData$NDVI <- as.numeric(FireSafetyJournalData$NDVI)
+
+FireSafetyJournalData$LST <- as.numeric(FireSafetyJournalData$LST)
+FireSafetyJournalData$BURNED_AREA <- as.numeric(FireSafetyJournalData$BURNED_AREA)
+
+
+summary(canada_fires)
+
+```
+
+```{r, warning=FALSE, error=FALSE}
+# better visual of the data
+
+library(ggplot2)
+library(GGally)
+
+ggpairs(canada_fires, aes(color=CLASS))
+
+```
+
+```{r,warning=FALSE}
+# seeing what split yields the best results
+# 70/30
+
+# Load the required library
+library(e1071)
+
+# Load the data set
+data(canada_fires)
+
+# Split the data into training and testing sets
+set.seed(123)
+train_index <- sample(1:nrow(canada_fires), round(nrow(canada_fires)*0.7))
+train_data <- canada_fires[train_index,]
+test_data <- canada_fires[-train_index,]
+
+# Define the range of gamma and C values to test
+gamma_values <- 2^(-15:2)
+C_values <- 2^(-5:10)
+
+# Create a matrix to store the results
+results <- matrix(0, nrow=length(gamma_values), ncol=length(C_values))
+colnames(results) <- C_values
+rownames(results) <- gamma_values
+
+# Loop through each combination of gamma and C values and fit the SVM model
+for (i in 1:length(gamma_values)) {
+  for (j in 1:length(C_values)) {
+    svm_model <- svm(CLASS ~ ., data=train_data, kernel="radial", gamma=gamma_values[i], cost=C_values[j])
+    pred <- predict(svm_model, newdata=test_data)
+    accuracy <- sum(pred == test_data$CLASS)/length(pred)
+    results[i,j] <- accuracy
+  }
+}
+
+# Print the results
+print(results)
+
+```
+
+
+```{r, warning=FALSE}
+# 80/20
+
+# Load the required library
+library(e1071)
+
+# Load the data set
+data(canada_fires)
+
+# Split the data into training and testing sets
+set.seed(123)
+train_index <- sample(1:nrow(canada_fires), round(nrow(canada_fires)*0.8))
+train_data <- canada_fires[train_index,]
+test_data <- canada_fires[-train_index,]
+
+# Define the range of gamma and C values to test
+gamma_values <- 2^(-15:2)
+C_values <- 2^(-5:10)
+
+# Create a matrix to store the results
+results <- matrix(0, nrow=length(gamma_values), ncol=length(C_values))
+colnames(results) <- C_values
+rownames(results) <- gamma_values
+
+# Loop through each combination of gamma and C values and fit the SVM model
+for (i in 1:length(gamma_values)) {
+  for (j in 1:length(C_values)) {
+    svm_model <- svm(CLASS ~ ., data=train_data, kernel="radial", gamma=gamma_values[i], cost=C_values[j])
+    pred <- predict(svm_model, newdata=test_data)
+    accuracy <- sum(pred == test_data$CLASS)/length(pred)
+    results[i,j] <- accuracy
+  }
+}
+
+# Print the results
+print(results)
+
+```
+
+
+```{r, warning=FALSE}
+# again, seeing which split yields the best result based on the previous findings of which C-value and gamma values to use 
+# 70/30, C=256, gamma=0.25
+
+library(e1071)
+
+# Split the dataset into training and testing sets
+set.seed(123)
+train_index <- sample(1:nrow(canada_fires), round(nrow(canada_fires)*0.70))
+train_data <- canada_fires[train_index, ]
+test_data <- canada_fires[-train_index, ]
+
+# Train the SVM model using a radial kernel and regularization
+svm_model <- svm(CLASS ~ ., data = train_data, kernel = "radial", cost = 256, gamma = 0.25)
+
+# Make predictions on the testing set
+svm_predictions <- predict(svm_model, newdata = test_data)
+
+# Compute the confusion matrix
+svm_conf_matrix <- table(svm_predictions, test_data$CLASS)
+svm_conf_matrix
+
+# Compute the accuracy, sensitivity, and specificity of the predictions
+svm_accuracy <- sum(diag(svm_conf_matrix))/sum(svm_conf_matrix)
+svm_sensitivity <- svm_conf_matrix[2,2]/sum(svm_conf_matrix[2,])
+svm_specificity <- svm_conf_matrix[1,1]/sum(svm_conf_matrix[1,])
+
+# Print the results
+print(paste("Accuracy:", round(svm_accuracy, 4)))
+print(paste("Sensitivity:", round(svm_sensitivity, 4)))
+print(paste("Specificity:", round(svm_specificity, 4)))
+
+```
+
+```{r, warning=FALSE}
+# 80/20, C=8, gamma=1
+
+library(e1071)
+
+# Split the dataset into training and testing sets
+set.seed(123)
+train_index <- sample(1:nrow(canada_fires), round(nrow(canada_fires)*0.80))
+train_data <- canada_fires[train_index, ]
+test_data <- canada_fires[-train_index, ]
+
+# Train the SVM model using a radial kernel and regularization
+svm_model <- svm(CLASS ~ ., data = train_data, kernel = "radial", cost = 8, gamma = 1)
+
+# Make predictions on the testing set
+svm_predictions <- predict(svm_model, newdata = test_data)
+
+# Compute the confusion matrix
+svm_conf_matrix <- table(svm_predictions, test_data$CLASS)
+svm_conf_matrix
+
+# Compute the accuracy, sensitivity, and specificity of the predictions
+svm_accuracy <- sum(diag(svm_conf_matrix))/sum(svm_conf_matrix)
+svm_sensitivity <- svm_conf_matrix[2,2]/sum(svm_conf_matrix[2,])
+svm_specificity <- svm_conf_matrix[1,1]/sum(svm_conf_matrix[1,])
+
+# Print the results
+print(paste("Accuracy:", round(svm_accuracy, 4)))
+print(paste("Sensitivity:", round(svm_sensitivity, 4)))
+print(paste("Specificity:", round(svm_specificity, 4)))
+
+```
+
+
+```{r}
+# visual of these results; showing the different epochs 
+
+library(ggplot2)
+library(reshape2)
+
+# Example accuracy, sensitivity, and specificity values over # epochs
+accuracy <- c(0.8171, 0.8131, 0.8192, 0.8249, 0.823, 0.8338, 0.8338)
+sensitivity <- c(0.8198, 0.8138, 0.8228, 0.832, 0.8262, 0.8354, 0.8313)
+specificity <- c(0.75, 0.7778, 0.7, 0.5714, 0.76, 0.8, 0.9091)
+epochs <- 1:7
+
+# an epoch is one complete pass through the entire training dataset during the training process of a machine learning model 
+
+# Create a data frame with the performance metrics
+df <- data.frame(epoch = epochs,
+                 accuracy = accuracy,
+                 sensitivity = sensitivity,
+                 specificity = specificity)
+
+# Melt the data frame for plotting with ggplot2
+df_melted <- melt(df, id.vars = "epoch")
+
+# Create the line plot
+ggplot(df_melted, aes(x = epoch, y = value, color = variable)) +
+  geom_line(size=1) +
+  ggtitle("Model Performance Metrics") +
+  xlab("Epoch") +
+  ylab("Value") +
+  scale_color_manual(values = c("limegreen", "red1", "royalblue1")) +
+  theme_bw()
+```
+
+```{r}
+# 3D plot of the two categories 
+
+library(plotly)
+
+plot_ly(data = canada_fires, x = ~NDVI, y = ~LST, z = ~BURNED_AREA, color = ~CLASS, colors = c("orangered", "forestgreen"), type = "scatter3d", mode = "markers", marker = list(size = 4.5)) %>%
+  layout(scene = list(xaxis = list(range = c(min(canada_fires$NDVI), max(canada_fires$NDVI))),
+                       yaxis = list(range = c(min(canada_fires$LST), max(canada_fires$LST))),
+                       zaxis = list(range = c(min(canada_fires$BURNED_AREA), max(canada_fires$BURNED_AREA)))))
+
+```
+
+
+
